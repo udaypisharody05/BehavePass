@@ -2,124 +2,121 @@
 
 > **Keystroke Dynamics-Based Password Strength Predictor Using BiLSTM & Neural Password Guesser Feedback**
 
-BehavePass-Lite is a cybersecurity research platform investigating whether creation-time keystroke dynamics (dwell time, inter-key flight time, press-to-press latency, pauses, and backspaces) provide predictive signals for password guessability beyond static string analysis (`zxcvbn`, Shannon entropy, character distribution).
+BehavePass-Lite is a cybersecurity research platform investigating whether creation-time keystroke dynamics provide predictive signals for password guessability beyond static string analysis.
 
----
+## Privacy and cybersecurity research policy
 
-## 🔒 Privacy & Cybersecurity Research Policy
+1. **Do not enter real passwords.** Create unique, synthetic passwords exclusively for this study.
+2. **Zero plaintext storage:** Plaintext passwords are analyzed in memory only inside the client browser. No plaintext passwords, password hashes, or raw character keys are logged, sent across network APIs, or saved to the database.
+3. **No psychological diagnosis:** The platform measures physical typing timing metrics only and makes no claims regarding stress, cognitive load, anxiety, or fatigue.
 
-1. **Do NOT enter real passwords.** Create unique, synthetic passwords exclusively for this study.
-2. **Zero Plaintext Storage:** Plaintext passwords are analyzed **in-memory only** inside the client browser. No plaintext passwords, password hashes, or raw character keys are ever logged, sent across network APIs, or saved to the database.
-3. **No Psychological Diagnosis:** The platform measures physical typing timing metrics only. It makes **zero** claims regarding stress, cognitive load, anxiety, or fatigue.
+## Prerequisites
 
----
+- Git
+- Python 3.10, 3.11, or 3.12 (Python 3.12 recommended)
+- Node.js 20 LTS or newer, with npm
 
-## 🏗️ Repository Architecture
+The backend uses SQLite and does not require a separate database server for local development.
+
+## Clone the repository
 
 ```text
-behavepass-lite/
-├── frontend/             # React + Vite + TypeScript + Tailwind CSS + zxcvbn
-│   ├── src/
-│   │   ├── components/   # UI components (Header, PasswordTaskCard, FeedbackCard, AnalyticsModal)
-│   │   ├── hooks/        # Keystroke collector custom hook
-│   │   ├── services/     # API client
-│   │   ├── types/        # TypeScript schemas
-│   │   └── utils/        # Client static feature & keystroke dynamics extractors
-│   └── ...
-├── backend/              # Python FastAPI + SQLAlchemy + Pydantic v2 + SQLite
-│   ├── app/
-│   │   ├── api/          # Endpoints (/health, /sessions, /analytics, /export, /predict)
-│   │   ├── core/         # Config & security guardrails
-│   │   ├── database/     # SQLite ORM session engine
-│   │   ├── models/       # Database models (Participant, Session, KeystrokeFeature)
-│   │   ├── schemas/      # Pydantic request/response validation schemas
-│   │   └── services/     # Feature validator, transparent behavioural rules, session service
-│   └── tests/            # pytest suite (privacy, feature validation, session lifecycle)
-├── ml/                   # Machine learning preparation module & BiLSTM stub
-├── docs/                 # Research specifications (ARCHITECTURE, DATA_DICTIONARY, PRIVACY, EXPERIMENT_PROTOCOL)
-└── README.md
+git clone https://github.com/udaypisharody05/BehavePass.git
+cd BehavePass
 ```
 
----
+All commands below start in the cloned repository root. Keep the backend and frontend running in separate terminals.
 
-## 🚀 Windows Local Setup & Quick Start
-
-### 1. Prerequisites
-- Python 3.10+
-- Node.js v18+ & npm
-
-### 2. Backend Setup & Run
-
-Open a command prompt or PowerShell terminal in `c:\BehavePass\backend`:
+## Backend setup on Windows PowerShell
 
 ```powershell
-cd c:\BehavePass\backend
-
-# Create virtual environment
+cd backend
 python -m venv venv
-
-# Activate virtual environment
-.\venv\Scripts\activate
-
-# Install backend dependencies
-pip install -r requirements.txt
-
-# Launch FastAPI development server
-uvicorn app.main:app --reload --port 8000
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
 ```
-The backend service will run at `http://localhost:8000`. Access Swagger documentation at `http://localhost:8000/docs`.
 
-### 3. Frontend Setup & Run
-
-Open a second terminal window in `c:\BehavePass\frontend`:
+If PowerShell blocks activation, use a process-scoped policy change and activate again:
 
 ```powershell
-cd c:\BehavePass\frontend
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\Activate.ps1
+```
 
-# Install frontend dependencies
+## Backend setup on macOS/Linux
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+The backend runs at [http://localhost:8000](http://localhost:8000), with Swagger UI at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+By default, local data is stored in `backend/behavepass.db`, independent of the launch directory. Set `DATABASE_URL` before starting the server to use a different SQLAlchemy database URL.
+
+## Frontend setup on Windows and macOS/Linux
+
+Open another terminal in the repository root:
+
+```text
+cd frontend
 npm install
-
-# Run Vite dev server
 npm run dev
 ```
-The React interface will run at `http://localhost:5173`.
 
----
+The Vite frontend runs at [http://localhost:5173](http://localhost:5173) and proxies API requests to the backend on port 8000.
 
-## 🧪 Running Automated Tests
+## Tests and checks
 
-### Backend Unit Tests
-In the backend terminal with virtual environment active:
+Run backend tests from `backend` with its virtual environment active:
 
-```powershell
-cd c:\BehavePass\backend
-pytest -v
+```text
+python -m pytest -v
 ```
 
-### Frontend Utility Tests
-In the frontend terminal:
+Run frontend tests and the production build from `frontend`:
 
-```powershell
-cd c:\BehavePass\frontend
+```text
 npm run test
+npm run build
 ```
 
----
+`npm run build` runs the TypeScript check before creating the Vite production bundle. A no-output TypeScript check is also available as `npm run lint`.
 
-## 📊 Dataset CSV Export
+## Apple Silicon
 
-Research team members can view session summaries or download the complete dataset CSV via the web interface dashboard, or directly by calling:
+The declared Python packages and frontend build tools support macOS ARM64 for the recommended Python and Node.js versions; no architecture-specific project configuration is required. Use an ARM64-native Python installation (for example, from Homebrew or python.org) rather than mixing an Intel Python environment with ARM64 packages. If installation selects source builds instead of wheels, confirm that the active Python is 3.10-3.12 and that the terminal and Python process use the same architecture.
+
+## Repository architecture
+
+```text
+BehavePass/
+|-- frontend/   # React, Vite, TypeScript, Tailwind CSS, and zxcvbn
+|-- backend/    # FastAPI, SQLAlchemy, Pydantic, and SQLite
+|-- ml/         # ML preparation module and BiLSTM stub
+|-- docs/       # Research and architecture specifications
+`-- README.md
+```
+
+## Dataset CSV export
+
+Research team members can download the derived dataset from the web interface or directly from:
 
 ```text
 GET http://localhost:8000/api/export/csv
 ```
 
-The CSV dataset contains non-sensitive derived timing features, static password scores, and anonymous participant metadata ready for ML training.
+The export contains non-sensitive derived timing features, static password scores, and anonymous participant metadata ready for ML training.
 
----
-
-## 📄 License & Course Project Attribution
+## License and course project attribution
 
 Cybersecurity Course Research Project — Vellore Institute of Technology (VIT).
+
 - Aadi Rawat (Reg No: 23BCE2177)
 - Uday Pisharody (Reg No: 23BCE2165)

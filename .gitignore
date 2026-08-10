@@ -1,5 +1,10 @@
 # Python / Byte-compiled
 __pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.py[cod]
 *$py.class
 *.so
@@ -28,10 +33,19 @@ venv/
 .venv/
 ENV/
 
+# Local environment and runtime data
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+
 # Node / React
 node_modules/
 frontend/dist/
 frontend/dist-ssr/
+frontend/coverage/
 *.local
 .vscode/
 .idea/
