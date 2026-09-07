@@ -112,4 +112,9 @@ export interface PredictResponse {
   log10_estimated_guesses: number;
   behavioural_summary: string[];
   behavioural_model_status: string;
+  fusion_log10_estimated_guesses: number | null;
+  model_used: string;
+  model_type: string;
+  target: string;
+  warnings: string[];
 }

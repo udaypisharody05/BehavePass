@@ -6,6 +6,7 @@ import {
   PredictResponse,
   StaticFeaturesSchema,
   SessionFeaturesSchema,
+  KeystrokeFeatureItem,
 } from '../types';
 
 const API_BASE = '/api';
@@ -43,14 +44,18 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummaryResponse>
 
 export async function requestPrediction(
   static_features: StaticFeaturesSchema,
-  session_features: SessionFeaturesSchema
+  session_features: SessionFeaturesSchema,
+  keystroke_sequence: KeystrokeFeatureItem[]
 ): Promise<PredictResponse> {
   const res = await fetch(`${API_BASE}/predict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ static_features, session_features }),
+    body: JSON.stringify({ static_features, session_features, keystroke_sequence }),
   });
-  if (!res.ok) throw new Error('Failed to obtain prototype prediction');
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to obtain prediction' }));
+    throw new Error(errorData.detail || 'Failed to obtain prediction');
+  }
   return res.json();
 }
 

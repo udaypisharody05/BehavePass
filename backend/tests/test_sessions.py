@@ -104,7 +104,9 @@ def test_session_lifecycle_and_endpoints():
     res_predict = client.post("/api/predict", json=predict_req)
     assert res_predict.status_code == 200
     predict_data = res_predict.json()
-    assert predict_data["behavioural_model_status"] == "not_trained"
+    assert predict_data["behavioural_model_status"] == "sequence_unavailable"
+    assert predict_data["fusion_log10_estimated_guesses"] is None
+    assert predict_data["warnings"]
     assert len(predict_data["behavioural_summary"]) > 0
 
     # 7. Delete session

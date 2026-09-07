@@ -100,8 +100,11 @@ class AnalyticsSummaryResponse(BaseModel):
     average_zxcvbn_score: float
 
 class PredictRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     static_features: StaticFeaturesSchema
     session_features: SessionFeaturesSchema
+    keystroke_sequence: List[KeystrokeFeatureItem] = Field(default_factory=list)
 
 class PredictResponse(BaseModel):
     static_strength_tier: str
@@ -109,3 +112,8 @@ class PredictResponse(BaseModel):
     log10_estimated_guesses: float
     behavioural_summary: List[str]
     behavioural_model_status: str = "not_trained"
+    fusion_log10_estimated_guesses: Optional[float] = None
+    model_used: str = "Static analysis only"
+    model_type: str = "BiLSTM + MLP fusion"
+    target: str = "log10 estimated guesses"
+    warnings: List[str] = Field(default_factory=list)

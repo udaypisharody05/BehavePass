@@ -1,0 +1,2 @@
+# Required by the live FastAPI fusion-inference endpoint and neural experiments.
+torch>=2.3,<3

@@ -5,6 +5,14 @@ This module prepares data preprocessing and model architectures for Phase 2:
 - Feature concatenation with static password features (`zxcvbn`, character counts, entropy).
 - Multi-layer perceptron (MLP) regressor to estimate neural guessability rank (`log10_estimated_guesses` or PassGAN rank).
 
+The tested GREYC-Web preprocessing adapter is documented in
+[`docs/GREYC_DATA.md`](../docs/GREYC_DATA.md). It performs inspection and
+canonicalization only; it does not train a model.
+
+The synthetic BiLSTM/fusion proof of concept is documented in
+[`docs/bilstm_fusion_analysis.md`](../docs/bilstm_fusion_analysis.md). Install
+its optional dependency with `python -m pip install -r ml/requirements-neural.txt`.
+
 ## Data Flow Pipeline
 
 ```text

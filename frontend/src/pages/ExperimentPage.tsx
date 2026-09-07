@@ -40,8 +40,12 @@ export const ExperimentPage: React.FC = () => {
       // 1. Post session record to FastAPI backend
       await postSession(payload);
 
-      // 2. Request prototype rule-based prediction & observations
-      const pred = await requestPrediction(payload.static_features, payload.session_features);
+      // 2. Request static, rule-based, and experimental fusion outputs.
+      const pred = await requestPrediction(
+        payload.static_features,
+        payload.session_features,
+        payload.keystroke_sequence
+      );
 
       setLastPayload(payload);
       setLastPrediction(pred);

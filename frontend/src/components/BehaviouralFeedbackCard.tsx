@@ -44,6 +44,40 @@ export const BehaviouralFeedbackCard: React.FC<BehaviouralFeedbackCardProps> = (
           </span>
         </div>
 
+        {/* Static assessment and experimental fusion estimate remain separate. */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">Static assessment</div>
+            <div className="text-lg font-semibold text-blue-300">
+              {prediction.static_strength_tier}
+            </div>
+            <div className="text-xs text-slate-400 mt-1">
+              zxcvbn log10 guessability: {prediction.log10_estimated_guesses.toFixed(3)}
+            </div>
+          </div>
+          <div className="bg-slate-950/60 border border-purple-500/20 rounded-lg p-4">
+            <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">Behavior-augmented assessment</div>
+            {prediction.fusion_log10_estimated_guesses !== null ? (
+              <>
+                <div className="text-lg font-semibold text-purple-300">
+                  {prediction.fusion_log10_estimated_guesses.toFixed(3)} log10 guesses
+                </div>
+                <div className="text-xs text-slate-400 mt-1">
+                  Experimental estimate trained on synthetic timing data; it is not superior to the static baseline.
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-slate-400">Unavailable for this entry.</div>
+            )}
+          </div>
+        </div>
+
+        {prediction.warnings.length > 0 && (
+          <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded text-xs text-amber-200">
+            {prediction.warnings.map((warning, index) => <div key={index}>{warning}</div>)}
+          </div>
+        )}
+
         {/* 2-Column Section: Static vs Behavioural Timing */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -153,7 +187,7 @@ export const BehaviouralFeedbackCard: React.FC<BehaviouralFeedbackCardProps> = (
           <div className="mt-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded text-[11px] text-slate-400 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div>
-              <strong className="text-slate-300">BiLSTM Pipeline Status:</strong> {prediction.behavioural_model_status === 'not_trained' ? 'Behavioural BiLSTM neural model is currently pending dataset collection and training (Phase 1 Baseline).' : prediction.behavioural_model_status}
+              <strong className="text-slate-300">Experimental model:</strong> {prediction.model_used}. Target: {prediction.target}.
               <br />
               <span className="text-[10px] text-slate-400">Notice: Observations describe physical timing metrics only. No claims regarding stress, fatigue, anxiety, or cognitive load are made.</span>
             </div>
