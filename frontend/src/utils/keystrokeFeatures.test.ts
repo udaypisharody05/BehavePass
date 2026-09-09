@@ -1,7 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { computeSessionFeatures, RawKeyRecord } from './keystrokeFeatures';
+import {
+  computeSessionFeatures,
+  isCapturedPasswordKey,
+  RawKeyRecord,
+} from './keystrokeFeatures';
 
 describe('keystrokeFeatures comprehensive timing tests', () => {
+  it('captures password characters and backspaces but excludes control keys', () => {
+    expect(isCapturedPasswordKey('a')).toBe(true);
+    expect(isCapturedPasswordKey('!')).toBe(true);
+    expect(isCapturedPasswordKey('Backspace')).toBe(true);
+    expect(isCapturedPasswordKey('Shift')).toBe(false);
+    expect(isCapturedPasswordKey('Control')).toBe(false);
+    expect(isCapturedPasswordKey('ArrowLeft')).toBe(false);
+  });
+
   it('represents undefined first-event flight_time and press_to_press_latency as null', () => {
     const records: RawKeyRecord[] = [
       { keyId: 'k1', isBackspace: false, keydownTimestamp: 1000, keyupTimestamp: 1080 },

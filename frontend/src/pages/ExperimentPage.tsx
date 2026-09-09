@@ -37,15 +37,19 @@ export const ExperimentPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // 1. Post session record to FastAPI backend
-      await postSession(payload);
-
-      // 2. Request static, rule-based, and experimental fusion outputs.
+      // 1. Request static, rule-based, and experimental fusion outputs.
       const pred = await requestPrediction(
         payload.static_features,
         payload.session_features,
         payload.keystroke_sequence
       );
+
+      // 2. Persist the research session together with the inference outcome.
+      await postSession({
+        ...payload,
+        behavioural_model_status: pred.behavioural_model_status,
+        fusion_log10_estimated_guesses: pred.fusion_log10_estimated_guesses,
+      });
 
       setLastPayload(payload);
       setLastPrediction(pred);
@@ -86,6 +90,7 @@ export const ExperimentPage: React.FC = () => {
         handleKeyUp={collector.handleKeyUp}
         handlePaste={collector.handlePaste}
         handleBlur={collector.handleBlur}
+        markIntentionalControlInteraction={collector.markIntentionalControlInteraction}
         handleChange={collector.handleChange}
         onReset={collector.resetSession}
         onSubmit={handleSubmit}

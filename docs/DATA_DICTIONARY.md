@@ -104,6 +104,8 @@ All timing metrics are represented in **milliseconds (ms)** unless explicitly st
 | `backspace_rate` | Float | ratio | `backspace_count / total_key_presses`. |
 | `correction_burst_count` | Integer | count | Sequences of $\ge 2$ consecutive backspace actions. |
 | `characters_per_second` | Float | char/s | $\text{password\_length} / (\text{duration} / 1000)$. |
+| `behavioural_model_status` | String (Nullable) | - | Runtime fusion-model status. `null` identifies historical sessions recorded before inference persistence. |
+| `fusion_log10_estimated_guesses` | Float (Nullable) | $\log_{10}$ | Experimental behavior-augmented estimate. Remains `null` when inference is unavailable or was not recorded. |
 
 ---
 
@@ -119,3 +121,8 @@ All timing metrics are represented in **milliseconds (ms)** unless explicitly st
 | `press_to_press_latency` | Float (Nullable) | ms | Press-to-press latency ($\text{keydown}_i - \text{keydown}_{i-1}$). Represented as `null` for sequence index 0. |
 | `is_backspace` | Boolean | bool | `true` if key action was Backspace. |
 | `is_pause` | Boolean | bool | `true` if press-to-press latency $\ge \text{pause\_threshold\_ms}$. |
+
+The CSV export includes this sequence deterministically in
+`keystroke_sequence_json`, ordered by `sequence_index`. Each JSON item contains
+only the six fields above; it contains no password text, character identity, or
+raw key code.

@@ -11,6 +11,19 @@ import {
 
 const API_BASE = '/api';
 
+function apiErrorMessage(errorData: unknown, fallback: string): string {
+  if (!errorData || typeof errorData !== 'object' || !("detail" in errorData)) return fallback;
+  const detail = (errorData as { detail?: unknown }).detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => (item && typeof item === 'object' && 'msg' in item ? String(item.msg) : ''))
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join('; ');
+  }
+  return fallback;
+}
+
 export async function fetchHealth(): Promise<{ status: string; project: string }> {
   const res = await fetch('/health');
   if (!res.ok) throw new Error('Health check failed');
@@ -54,7 +67,7 @@ export async function requestPrediction(
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to obtain prediction' }));
-    throw new Error(errorData.detail || 'Failed to obtain prediction');
+    throw new Error(apiErrorMessage(errorData, 'Failed to obtain prediction'));
   }
   return res.json();
 }

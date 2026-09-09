@@ -1,29 +1,20 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.database.base import Base
 from app.database.session import engine
+from app.database.migrations import ensure_session_behavioral_columns
 from app.models import *  # ensure models are registered
 from app.api.router import api_router
-from app.ml.inference import validate_demo_artifact_paths
 
 # Create SQLite tables on startup
 Base.metadata.create_all(bind=engine)
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    # Fail before serving requests when required local demo artifacts are absent.
-    validate_demo_artifact_paths()
-    yield
+ensure_session_behavioral_columns(engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="BehavePass-Lite: Keystroke Dynamics Password Strength Research Platform",
-    lifespan=lifespan,
 )
 
 # Enable CORS for local development

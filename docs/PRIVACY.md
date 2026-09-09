@@ -11,6 +11,7 @@ BehavePass-Lite is designed with privacy-first research principles:
 - Keystroke timing sequences record $[T_{\text{dwell}}, T_{\text{flight}}, T_{\text{press}}, I_{\text{backspace}}]$.
 - Specific key identities (letters, numbers, symbols) are **stripped prior to storage**.
 - Only generic boolean flags (`is_backspace`, `is_pause`) are retained for sequence modelling.
+- The same privacy-safe numeric sequence is persisted and exported as deterministic JSON; password characters, key labels, and raw key codes are never included.
 
 ## 3. Session Validity & Dataset Export Policy
 - **Audit Preservation**: Invalid sessions (`is_valid: false`, e.g. paste, autofill, or focus loss) are preserved in database storage and included in dataset CSV exports (`GET /api/export/csv`) to allow researchers to audit participant compliance and anomaly rates.

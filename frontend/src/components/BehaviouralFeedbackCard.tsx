@@ -63,7 +63,7 @@ export const BehaviouralFeedbackCard: React.FC<BehaviouralFeedbackCardProps> = (
                   {prediction.fusion_log10_estimated_guesses.toFixed(3)} log10 guesses
                 </div>
                 <div className="text-xs text-slate-400 mt-1">
-                  Experimental estimate trained on synthetic timing data; it is not superior to the static baseline.
+                  Experimental behavior-augmented estimate from the BiLSTM/fusion model. The current checkpoint was trained on synthetic timing sequences and is not validated on real users.
                 </div>
               </>
             ) : (

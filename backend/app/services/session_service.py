@@ -1,4 +1,5 @@
 import io
+import json
 from typing import List, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -70,7 +71,11 @@ class SessionService:
             backspace_count=payload.session_features.backspace_count,
             backspace_rate=payload.session_features.backspace_rate,
             correction_burst_count=payload.session_features.correction_burst_count,
-            characters_per_second=payload.session_features.characters_per_second
+            characters_per_second=payload.session_features.characters_per_second,
+
+            # Experimental behavioral inference
+            behavioural_model_status=payload.behavioural_model_status,
+            fusion_log10_estimated_guesses=payload.fusion_log10_estimated_guesses,
         )
         db.add(session_obj)
         db.flush()
@@ -120,6 +125,8 @@ class SessionService:
             invalid_reason=session_obj.invalid_reason,
             device_type=session_obj.device_type,
             created_at=session_obj.created_at,
+            behavioural_model_status=session_obj.behavioural_model_status,
+            fusion_log10_estimated_guesses=session_obj.fusion_log10_estimated_guesses,
             static_features={
                 "password_length": session_obj.password_length,
                 "lowercase_count": session_obj.lowercase_count,
@@ -160,7 +167,7 @@ class SessionService:
                     "is_backspace": k.is_backspace,
                     "is_pause": k.is_pause,
                 }
-                for k in (session_obj.keystrokes or [])
+                for k in sorted(session_obj.keystrokes or [], key=lambda item: item.sequence_index)
             ]
         )
 
@@ -177,6 +184,8 @@ class SessionService:
             SessionModel.password_length,
             SessionModel.zxcvbn_score,
             SessionModel.log10_estimated_guesses,
+            SessionModel.behavioural_model_status,
+            SessionModel.fusion_log10_estimated_guesses,
             SessionModel.total_typing_duration,
             SessionModel.pause_count,
             SessionModel.backspace_count,
@@ -197,6 +206,8 @@ class SessionService:
                 password_length=r.password_length,
                 zxcvbn_score=r.zxcvbn_score,
                 log10_estimated_guesses=r.log10_estimated_guesses,
+                behavioural_model_status=r.behavioural_model_status,
+                fusion_log10_estimated_guesses=r.fusion_log10_estimated_guesses,
                 total_typing_duration=r.total_typing_duration,
                 pause_count=r.pause_count,
                 backspace_count=r.backspace_count,
@@ -208,7 +219,12 @@ class SessionService:
     @staticmethod
     def get_analytics_summary(db: Session) -> AnalyticsSummaryResponse:
         total_sessions = db.query(func.count(SessionModel.id)).scalar() or 0
-        total_participants = db.query(func.count(Participant.id)).scalar() or 0
+        total_participants = (
+            db.query(func.count(func.distinct(Participant.participant_code)))
+            .join(SessionModel, SessionModel.participant_id == Participant.id)
+            .scalar()
+            or 0
+        )
         timed_count = db.query(func.count(SessionModel.id)).filter(SessionModel.condition == "timed").scalar() or 0
         untimed_count = db.query(func.count(SessionModel.id)).filter(SessionModel.condition == "untimed").scalar() or 0
         valid_count = db.query(func.count(SessionModel.id)).filter(SessionModel.is_valid == True).scalar() or 0
@@ -261,6 +277,8 @@ class SessionService:
             SessionModel.sequential_character_count,
             SessionModel.zxcvbn_score,
             SessionModel.log10_estimated_guesses,
+            SessionModel.behavioural_model_status,
+            SessionModel.fusion_log10_estimated_guesses,
             SessionModel.empirical_character_entropy,
             SessionModel.character_pool_entropy_estimate,
             SessionModel.total_typing_duration,
@@ -281,6 +299,25 @@ class SessionService:
         ).join(Participant, SessionModel.participant_id == Participant.id)
 
         df = pd.read_sql(query.statement, db.bind)
+        sequence_rows = db.query(KeystrokeFeatureModel).order_by(
+            KeystrokeFeatureModel.session_id,
+            KeystrokeFeatureModel.sequence_index,
+        ).all()
+        sequences = {}
+        for item in sequence_rows:
+            sequences.setdefault(item.session_id, []).append({
+                "sequence_index": item.sequence_index,
+                "dwell_time": item.dwell_time,
+                "flight_time": item.flight_time,
+                "press_to_press_latency": item.press_to_press_latency,
+                "is_backspace": item.is_backspace,
+                "is_pause": item.is_pause,
+            })
+        df["keystroke_sequence_json"] = df["session_id"].map(
+            lambda session_id: json.dumps(
+                sequences.get(session_id, []), sort_keys=True, separators=(",", ":")
+            )
+        )
         output = io.StringIO()
         df.to_csv(output, index=False)
         return output.getvalue()

@@ -185,7 +185,10 @@ Research team members can download the derived dataset from the web interface or
 GET http://localhost:8000/api/export/csv
 ```
 
-The export contains non-sensitive derived timing features, static password scores, and anonymous participant metadata ready for ML training.
+The export contains non-sensitive derived timing features, the experimental
+fusion result/status, static password scores, anonymous participant metadata,
+and the ordered privacy-safe numeric sequence as deterministic JSON. It never
+contains plaintext passwords or raw key identities.
 
 ## Local GREYC-Web inspection
 

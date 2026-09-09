@@ -7,6 +7,12 @@ export interface RawKeyRecord {
   keyupTimestamp: number | null;
 }
 
+export function isCapturedPasswordKey(key: string): boolean {
+  // Training sequences contain password-character presses and backspaces, not
+  // Shift/Control/Alt, navigation keys, or other browser controls.
+  return key === 'Backspace' || key.length === 1;
+}
+
 export function computeSessionFeatures(
   completedRecords: RawKeyRecord[],
   pauseThresholdMs: number = 500.0,

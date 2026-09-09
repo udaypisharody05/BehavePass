@@ -8,6 +8,10 @@ interface AnalyticsModalProps {
   onClose: () => void;
 }
 
+export function formatLog10Estimate(value: number | null): string {
+  return value === null ? '-' : value.toFixed(4);
+}
+
 export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose }) => {
   const [analytics, setAnalytics] = useState<AnalyticsSummaryResponse | null>(null);
   const [summaries, setSummaries] = useState<SessionSummaryResponse[]>([]);
@@ -124,7 +128,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose 
             <div>
               <h3 className="text-sm font-semibold text-white">Model-Ready Dataset CSV</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Contains only non-sensitive derived timing features, static scores, and anonymous metadata.
+                Contains privacy-safe timing sequences, derived behavioral features, model outcomes, static scores, and anonymous metadata.
               </p>
             </div>
 
@@ -151,7 +155,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose 
                       <th className="p-3">Status</th>
                       <th className="p-3">Len</th>
                       <th className="p-3">zxcvbn</th>
-                      <th className="p-3">Log10 Guesses</th>
+                      <th className="p-3">Static Log10</th>
+                      <th className="p-3">Behavioral Log10</th>
                       <th className="p-3">Duration</th>
                       <th className="p-3 text-right">Actions</th>
                     </tr>
@@ -159,7 +164,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose 
                   <tbody className="divide-y divide-slate-800/60 font-mono">
                     {summaries.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-6 text-center text-slate-500 font-sans">
+                        <td colSpan={9} className="p-6 text-center text-slate-500 font-sans">
                           No experimental sessions recorded yet.
                         </td>
                       </tr>
@@ -177,7 +182,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose 
                           </td>
                           <td className="p-3">{s.password_length}</td>
                           <td className="p-3">{s.zxcvbn_score}/4</td>
-                          <td className="p-3">{s.log10_estimated_guesses}</td>
+                          <td className="p-3">{formatLog10Estimate(s.log10_estimated_guesses)}</td>
+                          <td className="p-3">{formatLog10Estimate(s.fusion_log10_estimated_guesses)}</td>
                           <td className="p-3">{(s.total_typing_duration / 1000).toFixed(1)}s</td>
                           <td className="p-3 text-right">
                             <button

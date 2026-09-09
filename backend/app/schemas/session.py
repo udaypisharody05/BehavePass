@@ -61,6 +61,8 @@ class CreateSessionPayload(BaseModel):
     static_features: StaticFeaturesSchema
     session_features: SessionFeaturesSchema
     keystroke_sequence: List[KeystrokeFeatureItem]
+    behavioural_model_status: Optional[str] = Field(None, max_length=64)
+    fusion_log10_estimated_guesses: Optional[float] = None
 
 class SessionResponse(CreateSessionPayload):
     id: str
@@ -80,6 +82,8 @@ class SessionSummaryResponse(BaseModel):
     password_length: int
     zxcvbn_score: int
     log10_estimated_guesses: float
+    behavioural_model_status: Optional[str] = None
+    fusion_log10_estimated_guesses: Optional[float] = None
     total_typing_duration: float
     pause_count: int
     backspace_count: int

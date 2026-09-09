@@ -68,6 +68,8 @@ export interface CreateSessionPayload {
   static_features: StaticFeaturesSchema;
   session_features: SessionFeaturesSchema;
   keystroke_sequence: KeystrokeFeatureItem[];
+  behavioural_model_status?: string | null;
+  fusion_log10_estimated_guesses?: number | null;
 }
 
 export interface SessionResponse extends CreateSessionPayload {
@@ -87,6 +89,8 @@ export interface SessionSummaryResponse {
   password_length: number;
   zxcvbn_score: number;
   log10_estimated_guesses: number;
+  behavioural_model_status: string | null;
+  fusion_log10_estimated_guesses: number | null;
   total_typing_duration: number;
   pause_count: number;
   backspace_count: number;

@@ -13,7 +13,8 @@ interface PasswordTaskCardProps {
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleKeyUp: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handlePaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
-  handleBlur: () => void;
+  handleBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  markIntentionalControlInteraction: () => void;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onReset: () => void;
   onSubmit: () => void;
@@ -32,6 +33,7 @@ export const PasswordTaskCard: React.FC<PasswordTaskCardProps> = ({
   handleKeyUp,
   handlePaste,
   handleBlur,
+  markIntentionalControlInteraction,
   handleChange,
   onReset,
   onSubmit,
@@ -138,6 +140,8 @@ export const PasswordTaskCard: React.FC<PasswordTaskCardProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="button"
+              data-experiment-control="true"
+              onPointerDown={markIntentionalControlInteraction}
               onClick={handleResetClick}
               disabled={isSubmitting || passwordValue.length === 0}
               className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -148,6 +152,8 @@ export const PasswordTaskCard: React.FC<PasswordTaskCardProps> = ({
 
             <button
               type="button"
+              data-experiment-control="true"
+              onPointerDown={markIntentionalControlInteraction}
               onClick={onSubmit}
               disabled={!hasConsented || isSubmitting || passwordValue.length === 0}
               className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"

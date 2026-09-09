@@ -1,5 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
-import { RawKeyRecord, computeSessionFeatures } from '../utils/keystrokeFeatures';
+import {
+  RawKeyRecord,
+  computeSessionFeatures,
+  isCapturedPasswordKey,
+} from '../utils/keystrokeFeatures';
 import { calculateStaticFeatures } from '../utils/staticFeatures';
 import { CreateSessionPayload, ExperimentalCondition } from '../types';
 
@@ -29,6 +33,7 @@ export function useKeystrokeCollector({
   const completedRecordsRef = useRef<RawKeyRecord[]>([]);
   const pendingKeystrokeCountRef = useRef<number>(0);
   const keyIdCounterRef = useRef<number>(0);
+  const intentionalControlInteractionRef = useRef<boolean>(false);
 
   const resetCollector = useCallback(() => {
     setPasswordValue('');
@@ -51,7 +56,7 @@ export function useKeystrokeCollector({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     // If e.repeat is true, browser is auto-repeating held key. Ignore for timing pair matching.
-    if (e.repeat) return;
+    if (e.repeat || !isCapturedPasswordKey(e.key)) return;
 
     const isBackspace = e.key === 'Backspace';
     const now = performance.now();
@@ -70,6 +75,8 @@ export function useKeystrokeCollector({
   }, []);
 
   const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isCapturedPasswordKey(e.key)) return;
+
     const now = performance.now();
     const matchKey = e.code || e.key;
     const active = activeKeysRef.current.get(matchKey);
@@ -99,7 +106,21 @@ export function useKeystrokeCollector({
     setInvalidReason('Paste action detected and rejected');
   }, []);
 
-  const handleBlur = useCallback(() => {
+  const markIntentionalControlInteraction = useCallback(() => {
+    intentionalControlInteractionRef.current = true;
+  }, []);
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    const relatedTarget = e.relatedTarget;
+    const movedToExperimentControl =
+      relatedTarget instanceof HTMLElement
+      && relatedTarget.dataset.experimentControl === 'true';
+    const intentionalFocusChange =
+      intentionalControlInteractionRef.current || movedToExperimentControl;
+    intentionalControlInteractionRef.current = false;
+
+    if (intentionalFocusChange) return;
+
     // If input loses focus mid-typing, flag session as having focus loss
     if (passwordValue.length > 0) {
       setIsValid(false);
@@ -185,6 +206,7 @@ export function useKeystrokeCollector({
     handleKeyUp,
     handlePaste,
     handleBlur,
+    markIntentionalControlInteraction,
     handleChange,
     flagTimeout,
     resetSession,

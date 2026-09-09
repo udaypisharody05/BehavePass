@@ -57,6 +57,10 @@ class SessionModel(Base):
     correction_burst_count = Column(Integer, nullable=False)
     characters_per_second = Column(Float, nullable=False)
 
+    # Experimental behavioral inference output. Nullable for historical rows.
+    behavioural_model_status = Column(String(64), nullable=True)
+    fusion_log10_estimated_guesses = Column(Float, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     participant = relationship("Participant", back_populates="sessions")

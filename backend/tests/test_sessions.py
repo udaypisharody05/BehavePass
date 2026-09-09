@@ -1,4 +1,12 @@
+import csv
+import io
+import json
+from copy import deepcopy
+
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, inspect, text
+
+from app.database.migrations import ensure_session_behavioral_columns
 from app.main import app
 
 client = TestClient(app)
@@ -20,6 +28,8 @@ def test_session_lifecycle_and_endpoints():
         "is_valid": True,
         "invalid_reason": None,
         "device_type": "desktop",
+        "behavioural_model_status": "ready_synthetic_proof_of_concept",
+        "fusion_log10_estimated_guesses": 7.125,
         "static_features": {
             "password_length": 10,
             "lowercase_count": 5,
@@ -71,17 +81,23 @@ def test_session_lifecycle_and_endpoints():
     assert "participant_id" in created_data
     assert created_data["keystroke_sequence"][0]["flight_time"] is None
     assert created_data["keystroke_sequence"][0]["press_to_press_latency"] is None
+    assert created_data["behavioural_model_status"] == "ready_synthetic_proof_of_concept"
+    assert created_data["fusion_log10_estimated_guesses"] == 7.125
 
     # 2. Get session by ID
     res_get = client.get(f"/api/sessions/{session_id}")
     assert res_get.status_code == 200
     assert res_get.json()["id"] == session_id
+    assert res_get.json()["fusion_log10_estimated_guesses"] == 7.125
 
     # 3. List summaries
     res_list = client.get("/api/sessions")
     assert res_list.status_code == 200
     summaries = res_list.json()
     assert len(summaries) >= 1
+    stored_summary = next(item for item in summaries if item["id"] == session_id)
+    assert stored_summary["behavioural_model_status"] == "ready_synthetic_proof_of_concept"
+    assert stored_summary["fusion_log10_estimated_guesses"] == 7.125
 
     # 4. Get analytics
     res_analytics = client.get("/api/analytics/summary")
@@ -95,6 +111,22 @@ def test_session_lifecycle_and_endpoints():
     assert "session_id" in res_export.text
     assert "log10_estimated_guesses" in res_export.text
     assert "completed_within_limit" in res_export.text
+    exported_rows = list(csv.DictReader(io.StringIO(res_export.text)))
+    exported = next(row for row in exported_rows if row["session_id"] == session_id)
+    assert exported["behavioural_model_status"] == "ready_synthetic_proof_of_concept"
+    assert float(exported["fusion_log10_estimated_guesses"]) == 7.125
+    assert float(exported["average_dwell_time"]) == 85.0
+    sequence = json.loads(exported["keystroke_sequence_json"])
+    assert sequence == [{
+        "dwell_time": 85.0,
+        "flight_time": None,
+        "is_backspace": False,
+        "is_pause": False,
+        "press_to_press_latency": None,
+        "sequence_index": 0,
+    }]
+    assert "Secret123!" not in res_export.text
+    assert "key_char" not in exported["keystroke_sequence_json"]
 
     # 6. Predict endpoint
     predict_req = {
@@ -109,6 +141,61 @@ def test_session_lifecycle_and_endpoints():
     assert predict_data["warnings"]
     assert len(predict_data["behavioural_summary"]) > 0
 
-    # 7. Delete session
-    res_del = client.delete(f"/api/sessions/{session_id}")
-    assert res_del.status_code == 204
+    # 7. Model-unavailable and historical sessions remain storable with null output.
+    unavailable_payload = deepcopy(payload)
+    unavailable_payload["task_id"] = "TASK-MODEL-UNAVAILABLE"
+    unavailable_payload["behavioural_model_status"] = "model_unavailable"
+    unavailable_payload["fusion_log10_estimated_guesses"] = None
+    unavailable = client.post("/api/sessions", json=unavailable_payload)
+    assert unavailable.status_code == 201
+    unavailable_id = unavailable.json()["id"]
+    assert unavailable.json()["behavioural_model_status"] == "model_unavailable"
+    assert unavailable.json()["fusion_log10_estimated_guesses"] is None
+
+    historical_payload = deepcopy(payload)
+    historical_payload["task_id"] = "TASK-HISTORICAL"
+    historical_payload.pop("behavioural_model_status")
+    historical_payload.pop("fusion_log10_estimated_guesses")
+    historical = client.post("/api/sessions", json=historical_payload)
+    assert historical.status_code == 201
+    historical_id = historical.json()["id"]
+    assert historical.json()["behavioural_model_status"] is None
+    assert historical.json()["fusion_log10_estimated_guesses"] is None
+
+    # Participant analytics count distinct codes represented by stored sessions,
+    # not orphaned participant rows or the number of sessions.
+    all_summaries = client.get("/api/sessions?limit=1000").json()
+    analytics = client.get("/api/analytics/summary").json()
+    assert analytics["total_participants"] == len({
+        summary["participant_code"] for summary in all_summaries
+    })
+
+    # 8. Delete test sessions
+    for stored_id in (session_id, unavailable_id, historical_id):
+        res_del = client.delete(f"/api/sessions/{stored_id}")
+        assert res_del.status_code == 204
+
+
+def test_existing_sqlite_database_gets_nullable_behavioral_columns(tmp_path):
+    database_path = tmp_path / "historical.db"
+    migration_engine = create_engine(f"sqlite:///{database_path.as_posix()}")
+    with migration_engine.begin() as connection:
+        connection.execute(text("CREATE TABLE sessions (id VARCHAR(36) PRIMARY KEY)"))
+        connection.execute(text("INSERT INTO sessions (id) VALUES ('historical-session')"))
+
+    ensure_session_behavioral_columns(migration_engine)
+    ensure_session_behavioral_columns(migration_engine)
+
+    column_names = {
+        column["name"] for column in inspect(migration_engine).get_columns("sessions")
+    }
+    assert "behavioural_model_status" in column_names
+    assert "fusion_log10_estimated_guesses" in column_names
+    with migration_engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT behavioural_model_status, fusion_log10_estimated_guesses "
+                "FROM sessions WHERE id = 'historical-session'"
+            )
+        ).one()
+    assert row == (None, None)

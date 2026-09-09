@@ -69,7 +69,14 @@ def validate_demo_artifact_paths(
 class FusionInference:
     def __init__(self, checkpoint_path: Path, preprocessing_path: Path) -> None:
         validate_demo_artifact_paths(checkpoint_path, preprocessing_path)
-        metadata = json.loads(preprocessing_path.read_text(encoding="utf-8"))
+        try:
+            metadata = json.loads(preprocessing_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ModelArtifactError(
+                f"preprocessing metadata could not be loaded: {preprocessing_path}"
+            ) from error
+        if not isinstance(metadata, dict):
+            raise ModelArtifactError("preprocessing metadata must contain a JSON object")
         if metadata.get("sequence_features") != EXPECTED_SEQUENCE_FEATURES:
             raise ModelArtifactError("checkpoint sequence feature order is incompatible")
         if metadata.get("static_features") != EXPECTED_STATIC_FEATURES:
@@ -81,20 +88,47 @@ class FusionInference:
             "static_std": len(EXPECTED_STATIC_FEATURES),
         }
         for name, expected_length in expected_metadata_lengths.items():
-            if len(metadata.get(name, [])) != expected_length:
+            values = metadata.get(name)
+            if not isinstance(values, list) or len(values) != expected_length:
                 raise ModelArtifactError(
                     f"preprocessing metadata field {name} has an incompatible dimension"
                 )
-        if any(value <= 0 for value in metadata["sequence_std"] + metadata["static_std"]):
+        try:
+            normalization_values = {
+                name: [float(value) for value in metadata[name]]
+                for name in expected_metadata_lengths
+            }
+            target_mean = float(metadata["target_mean"])
+            target_std = float(metadata["target_std"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ModelArtifactError("preprocessing metadata contains invalid numeric values") from error
+        if any(
+            not math.isfinite(value)
+            for values in normalization_values.values()
+            for value in values
+        ) or not math.isfinite(target_mean) or not math.isfinite(target_std):
+            raise ModelArtifactError("preprocessing metadata contains non-finite values")
+        if any(
+            value <= 0
+            for value in normalization_values["sequence_std"]
+            + normalization_values["static_std"]
+        ):
             raise ModelArtifactError("preprocessing metadata contains a non-positive standard deviation")
-        if "target_mean" not in metadata or float(metadata.get("target_std", 0)) <= 0:
+        if target_std <= 0:
             raise ModelArtifactError("target preprocessing metadata is incomplete or invalid")
 
         if str(PROJECT_ROOT) not in sys.path:
             sys.path.insert(0, str(PROJECT_ROOT))
         from ml.sequence.models import build_neural_model
 
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        except Exception as error:
+            raise ModelArtifactError(
+                f"fusion checkpoint could not be loaded: {checkpoint_path}"
+            ) from error
+        if not isinstance(checkpoint, dict):
+            raise ModelArtifactError("fusion checkpoint has an invalid structure")
         if checkpoint.get("model_name") != "fusion_bilstm":
             raise ModelArtifactError("checkpoint is not the fusion BiLSTM model")
         if checkpoint.get("sequence_size") != len(EXPECTED_SEQUENCE_FEATURES):
@@ -103,23 +137,23 @@ class FusionInference:
             raise ModelArtifactError("checkpoint static dimension is incompatible")
         if checkpoint.get("seed") != metadata.get("seed"):
             raise ModelArtifactError("checkpoint and preprocessing metadata seeds do not match")
-        self.model = build_neural_model(
-            checkpoint["model_name"],
-            checkpoint["sequence_size"],
-            checkpoint["static_size"],
-            checkpoint["hidden_size"],
-        )
         try:
+            self.model = build_neural_model(
+                checkpoint["model_name"],
+                checkpoint["sequence_size"],
+                checkpoint["static_size"],
+                checkpoint["hidden_size"],
+            )
             self.model.load_state_dict(checkpoint["state_dict"])
-        except (KeyError, RuntimeError) as error:
+        except (KeyError, RuntimeError, TypeError, ValueError) as error:
             raise ModelArtifactError("fusion checkpoint weights are incompatible") from error
         self.model.eval()
-        self.sequence_mean = torch.tensor(metadata["sequence_mean"], dtype=torch.float32)
-        self.sequence_std = torch.tensor(metadata["sequence_std"], dtype=torch.float32)
-        self.static_mean = torch.tensor(metadata["static_mean"], dtype=torch.float32)
-        self.static_std = torch.tensor(metadata["static_std"], dtype=torch.float32)
-        self.target_mean = float(metadata["target_mean"])
-        self.target_std = float(metadata["target_std"])
+        self.sequence_mean = torch.tensor(normalization_values["sequence_mean"], dtype=torch.float32)
+        self.sequence_std = torch.tensor(normalization_values["sequence_std"], dtype=torch.float32)
+        self.static_mean = torch.tensor(normalization_values["static_mean"], dtype=torch.float32)
+        self.static_std = torch.tensor(normalization_values["static_std"], dtype=torch.float32)
+        self.target_mean = target_mean
+        self.target_std = target_std
 
     def preprocess_sequence(self, items: list[KeystrokeFeatureItem]) -> torch.Tensor:
         if not items:

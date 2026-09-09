@@ -34,16 +34,15 @@ def prototype_predict(req: PredictRequest):
             fusion_prediction = get_fusion_inference().predict(
                 req.keystroke_sequence, req.static_features
             )
-            model_used = "Synthetic proof-of-concept BiLSTM + MLP fusion"
+            model_used = "Experimental BiLSTM + MLP fusion (synthetic-trained checkpoint)"
             model_status = "ready_synthetic_proof_of_concept"
         except InferenceInputError as error:
             raise HTTPException(
                 status_code=422, detail=str(error)
             ) from error
         except ModelArtifactError as error:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
-            ) from error
+            model_status = "model_unavailable"
+            warnings.append(str(error))
         except ModelInferenceError as error:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

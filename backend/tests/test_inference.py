@@ -181,16 +181,34 @@ def test_malformed_sequence_is_rejected():
     assert "contiguous" in response.json()["detail"]
 
 
-def test_missing_checkpoint_returns_clear_service_error(monkeypatch, tmp_path: Path):
+def test_missing_checkpoint_preserves_static_response(monkeypatch, tmp_path: Path):
     def missing_artifact():
         return FusionInference(tmp_path / "missing.pt", PREPROCESSING_PATH)
 
     monkeypatch.setattr(predict_api, "get_fusion_inference", missing_artifact)
     response = client.post("/api/predict", json=make_request())
 
-    assert response.status_code == 503
-    assert "checkpoint is missing" in response.json()["detail"]
-    assert str(tmp_path / "missing.pt") in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["behavioural_model_status"] == "model_unavailable"
+    assert response.json()["fusion_log10_estimated_guesses"] is None
+    assert "checkpoint is missing" in response.json()["warnings"][0]
+    assert str(tmp_path / "missing.pt") in response.json()["warnings"][0]
+
+
+def test_invalid_checkpoint_is_reported_as_artifact_error(tmp_path: Path):
+    invalid_checkpoint = tmp_path / "invalid.pt"
+    invalid_checkpoint.write_bytes(b"not a PyTorch checkpoint")
+
+    with pytest.raises(ModelArtifactError, match="could not be loaded"):
+        FusionInference(invalid_checkpoint, PREPROCESSING_PATH)
+
+
+def test_invalid_preprocessing_is_reported_as_artifact_error(tmp_path: Path):
+    invalid_metadata = tmp_path / "invalid.json"
+    invalid_metadata.write_text("not json", encoding="utf-8")
+
+    with pytest.raises(ModelArtifactError, match="could not be loaded"):
+        FusionInference(CHECKPOINT_PATH, invalid_metadata)
 
 
 def test_model_failure_returns_concise_error_without_traceback(monkeypatch):
