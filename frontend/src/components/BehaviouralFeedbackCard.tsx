@@ -1,6 +1,8 @@
 import React from 'react';
 import { PredictResponse, CreateSessionPayload } from '../types';
 import { ShieldCheck, Cpu, Activity, Clock, AlertCircle, Info, Sparkles } from 'lucide-react';
+import { KeystrokeTimeline } from './KeystrokeTimeline';
+import { MLPipelineVisualization } from './MLPipelineVisualization';
 
 interface BehaviouralFeedbackCardProps {
   prediction: PredictResponse | null;
@@ -167,6 +169,10 @@ export const BehaviouralFeedbackCard: React.FC<BehaviouralFeedbackCardProps> = (
           </div>
 
         </div>
+
+        <KeystrokeTimeline sequence={payload.keystroke_sequence} />
+
+        <MLPipelineVisualization />
 
         {/* Behavioural Observation Summary */}
         <div className="mt-6 bg-slate-950 border border-slate-800 rounded-lg p-5">

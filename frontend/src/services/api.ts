@@ -49,6 +49,12 @@ export async function fetchSessionSummaries(): Promise<SessionSummaryResponse[]>
   return res.json();
 }
 
+export async function fetchSessionById(sessionId: string): Promise<SessionResponse> {
+  const res = await fetch(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}`);
+  if (!res.ok) throw new Error('Failed to fetch session details');
+  return res.json();
+}
+
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummaryResponse> {
   const res = await fetch(`${API_BASE}/analytics/summary`);
   if (!res.ok) throw new Error('Failed to fetch analytics summary');

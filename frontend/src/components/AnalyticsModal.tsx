@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AnalyticsSummaryResponse, SessionSummaryResponse } from '../types';
 import { fetchAnalyticsSummary, fetchSessionSummaries, getCsvExportUrl, deleteSessionById } from '../services/api';
 import { X, Download, Database, Trash2, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+import { SessionComparison } from './SessionComparison';
 
 interface AnalyticsModalProps {
   isOpen: boolean;
@@ -141,6 +142,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose 
               Download Dataset CSV
             </a>
           </div>
+
+          <SessionComparison sessions={summaries} />
 
           {/* Recent Sessions Table */}
           <div>
